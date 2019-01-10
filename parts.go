@@ -1,8 +1,6 @@
 package mimestream
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"mime"
@@ -60,26 +58,6 @@ type Source interface {
 	Add(name string, w *multipart.Writer) error
 }
 
-// JSON is a Source implementation that handles marshaling a value to JSON
-type JSON struct {
-	Value interface{}
-}
-
-// Add implements the Source interface.
-func (j JSON) Add(name string, w *multipart.Writer) error {
-	jsonBytes, err := json.Marshal(j.Value)
-	if err != nil {
-		return err
-	}
-	part, err := w.CreateFormField(name)
-	if err != nil {
-		return err
-	}
-	jsonBuffer := bytes.NewBuffer(jsonBytes)
-	_, err = io.Copy(part, jsonBuffer)
-	return err
-}
-
 // File is a Source implementation for files read from an io.Reader.
 type File struct {
 	// Name is the name of the file, not to be confused with the name of the Part.
@@ -123,8 +101,7 @@ func (f File) Add(name string, w *multipart.Writer) (err error) {
 		contentType = cType
 	}
 
-	fmt.Println("contentType", contentType)
-
+	// fmt.Println("contentType", contentType)
 	// mt := mime.FormatMediaType(p.ContentType, param)
 
 	header := textproto.MIMEHeader{
