@@ -34,17 +34,3 @@ func ToASCII(s string) string {
 	r, _, _ := transform.String(tr, s)
 	return r
 }
-
-// // trimReader is a custom io.Reader that will trim any leading
-// // whitespace, as this can cause email imports to fail.
-// type trimReader struct {
-// 	rd io.Reader
-// }
-//
-// // Read trims off any unicode whitespace from the originating reader
-// func (tr trimReader) Read(buf []byte) (int, error) {
-// 	n, err := tr.rd.Read(buf)
-// 	t := bytes.TrimLeftFunc(buf[:n], unicode.IsSpace)
-// 	n = copy(buf, t)
-// 	return n, err
-// }

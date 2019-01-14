@@ -33,8 +33,20 @@ type Parts []Part
 
 // Into creates a multipart message into the given target from the provided
 // parts.
-func (p Parts) Into(target io.Writer) (formDataContentType string, err error) {
-	w := multipart.NewWriter(target)
+// func (p Parts) Into(target io.Writer) (formDataContentType string, err error) {
+// 	w := multipart.NewWriter(target)
+// 	for _, part := range p {
+// 		err = part.Source.Add(part.Name, w)
+// 		if err != nil {
+// 			err = errors.Wrap(err, fmt.Sprintf("failed to add %T part %v", part, part))
+// 			return
+// 		}
+// 	}
+// 	formDataContentType = w.FormDataContentType()
+// 	return formDataContentType, w.Close()
+// }
+
+func (p Parts) Into(w *multipart.Writer) (err error) {
 	for _, part := range p {
 		err = part.Source.Add(part.Name, w)
 		if err != nil {
@@ -42,8 +54,7 @@ func (p Parts) Into(target io.Writer) (formDataContentType string, err error) {
 			return
 		}
 	}
-	formDataContentType = w.FormDataContentType()
-	return formDataContentType, w.Close()
+	return w.Close()
 }
 
 // Part defines a named part inside of a multipart message.

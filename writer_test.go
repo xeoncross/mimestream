@@ -29,14 +29,14 @@ func TestWriter(t *testing.T) {
 			},
 		},
 		Part{
-			Name: "filepart JPG",
+			Name: "image/jpeg",
 			Source: File{
 				Name:   "filename.jpg",
 				Reader: mockDataSrc(1024 * 1024 * 1000), // in MB
 			},
 		},
 		Part{
-			Name: "tmpfile",
+			Name: TextPlain,
 			Source: File{
 				Name:   "filename-2 שלום.txt",
 				Inline: true,
@@ -45,7 +45,7 @@ func TestWriter(t *testing.T) {
 			},
 		},
 		Part{
-			Name: "json stream",
+			Name: "application/json",
 			Source: File{
 				Name:   "payload.json",
 				Reader: strings.NewReader(`{"one":1,"two":2}`),
