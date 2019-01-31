@@ -6,11 +6,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/textproto"
 	"os"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -39,10 +39,31 @@ type Part struct {
 	Header textproto.MIMEHeader
 	Body   io.Reader
 	Closer io.ReadCloser
+	File   *os.File
 }
 
 func (p Part) Close() error {
 	return p.Closer.Close()
+}
+
+type TrimReader2 struct{ io.Reader }
+
+var trailingws = regexp.MustCompile(` +\r?\n`)
+
+func (tr TrimReader2) Read(bs []byte) (int, error) {
+	// Perform the requested read on the given reader.
+	n, err := tr.Reader.Read(bs)
+	if err != nil {
+		return n, err
+	}
+
+	// bytes.Replace(s, old, new, n)
+
+	// Remove trailing whitespace from each line.
+	lines := string(bs[:n])
+	trimmed := []byte(trailingws.ReplaceAllString(lines, ""))
+	copy(bs, trimmed)
+	return len(trimmed), nil
 }
 
 // trimReader is a custom io.Reader that will trim any leading
@@ -65,6 +86,8 @@ func (tr trimReader) Read(buf []byte) (int, error) {
 func NewEmailFromReader(r io.Reader, dir string) (mw MailWrapper, err error) {
 	s := trimReader{rd: r}
 	tp := textproto.NewReader(bufio.NewReader(s))
+
+	// io.CopyN(os.Stdout, s, int64(2000))
 
 	mw.Header, err = tp.ReadMIMEHeader()
 	if err != nil {
@@ -115,6 +138,18 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 				break
 			}
 
+			/////////////////////
+			// TODO
+			// There is an error in this section because we're not correctly padding
+			// the messages with newlines causing the check above to fail ^
+			// https://golang.org/src/mime/multipart/multipart.go#L313
+			if err != nil && err.Error() == "multipart: NextPart: EOF" {
+				fmt.Printf("Type: %T\n", err)
+				err = nil
+				return
+			}
+			/////////////////////
+
 			if err != nil {
 				err = errors.Wrap(err, "Error fetching next part")
 				return
@@ -128,7 +163,7 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 			// httpHeader := http.Header(p.Header)
 			// httpHeader := p.Header.(map[string][]string)
 			// httpHeader := (*map[string][]string).(p.Header)
-			fmt.Printf("%#v\n", p.Header)
+			fmt.Printf("Header: %#v\n", p.Header)
 
 			var subct string
 			subct, _, err = mime.ParseMediaType(p.Header.Get("Content-Type"))
@@ -147,23 +182,28 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 			} else {
 				fmt.Println("\tparsing plain?", subct)
 
-				var tmpFile *os.File
-				tmpFile, err = ioutil.TempFile(dir, "mime")
-				if err != nil {
-					err = errors.Wrap(err, "Error creating email temp file")
-					return
-				}
+				// v1: in-memory
+				parts = append(parts, &Part{Body: body, Header: p.Header, Closer: p})
 
-				_, err = io.Copy(tmpFile, body) // Save body disk
-				if err != nil {
-					err = errors.Wrap(err, "Error saving to email temp file")
-					return
-				}
+				// v2: disk-cache
+				// var tmpFile *os.File
+				// tmpFile, err = ioutil.TempFile(dir, "mime")
+				// if err != nil {
+				// 	err = errors.Wrap(err, "Error creating email temp file")
+				// 	return
+				// }
+				//
+				// _, err = io.Copy(tmpFile, body) // Save body disk
+				// if err != nil {
+				// 	err = errors.Wrap(err, "Error saving to email temp file")
+				// 	return
+				// }
+				//
+				// // Rewind for reading
+				// tmpFile.Seek(0, 0)
+				//
+				// parts = append(parts, &Part{Body: tmpFile, Closer: tmpFile, File: tmpFile, Header: p.Header})
 
-				// Rewind for reading
-				tmpFile.Seek(0, 0)
-
-				parts = append(parts, &Part{Body: tmpFile, Closer: tmpFile, Header: p.Header})
 			}
 		}
 	} else {

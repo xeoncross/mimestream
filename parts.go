@@ -134,6 +134,7 @@ func (f File) Add(name string, w *multipart.Writer) (err error) {
 	// Base64 encode + Mime Wrap to 76 characters
 	base64Encoder := NewMimeBase64Writer(part)
 
+	// Copy everything into the base64 encoder
 	_, err = io.Copy(base64Encoder, f.Reader)
 	if err != nil {
 		return err
@@ -146,7 +147,10 @@ func (f File) Add(name string, w *multipart.Writer) (err error) {
 	if f.Closer != nil {
 		return f.Closer.Close()
 	}
-	return nil
+
+	// Add the ending newlines
+	// _, err = part.Write([]byte("\r\n\r\n"))
+	return
 }
 
 // // FormFile is a Source implementation for files read from an io.Reader.
@@ -211,9 +215,12 @@ func (p TextPart) Add(name string, w *multipart.Writer) error {
 		return err
 	}
 
+	// TODO something...
 	if n != len(p.Text) {
 		fmt.Println("Didn't write enough!")
 	}
+
+	// _, err = quotedPart.Write([]byte("\r\n\r\n"))
 
 	// Need to close after writing
 	// https://golang.org/pkg/mime/quotedprintable/#Writer.Close

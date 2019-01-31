@@ -6,9 +6,10 @@ Status: *Work In Progress*
 
 ## TODO
 
-- Tests
-- Finish MIME headers
-- Test unlimited body size
+- More Tests
+- Finish MIME header creation/defaults
+- Finish MIME reader
+
 
 # Why
 

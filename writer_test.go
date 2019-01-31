@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"os"
 	"runtime"
 	"strings"
@@ -67,6 +68,8 @@ func TestWriter(t *testing.T) {
 	wc := &WriteCounter{}
 	finalwriter := io.MultiWriter(wc, out)
 
+	finalwriter2 := multipart.NewWriter(finalwriter)
+
 	// Report
 	go func() {
 		for {
@@ -80,7 +83,7 @@ func TestWriter(t *testing.T) {
 	}()
 
 	// Start the pipeline
-	_, err = parts.Into(finalwriter)
+	err = parts.Into(finalwriter2)
 	if err != nil {
 		t.Error(err)
 	}
