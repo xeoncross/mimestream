@@ -48,7 +48,7 @@ type Parts []Part
 
 func (p Parts) Into(w *multipart.Writer) (err error) {
 	for _, part := range p {
-		err = part.Source.Add(part.Name, w)
+		err = part.Source.Add(part.ContentType, w)
 		if err != nil {
 			err = errors.Wrap(err, fmt.Sprintf("failed to add %T part %v", part, part))
 			return
@@ -59,14 +59,14 @@ func (p Parts) Into(w *multipart.Writer) (err error) {
 
 // Part defines a named part inside of a multipart message.
 type Part struct {
-	Name string
+	ContentType string
 	Source
 }
 
 // Source is a data source that can add itself to a mime/multipart.Writer.
 type Source interface {
 	// Name can be a field name or content type. It is the part Content-Type
-	Add(name string, w *multipart.Writer) error
+	Add(contentType string, w *multipart.Writer) error
 }
 
 // File is a Source implementation for files read from an io.Reader.
@@ -88,7 +88,7 @@ type File struct {
 }
 
 // Add implements the Source interface.
-func (f File) Add(name string, w *multipart.Writer) (err error) {
+func (f File) Add(contentType string, w *multipart.Writer) (err error) {
 
 	// Valid Attachment-Headers:
 	//
@@ -101,7 +101,11 @@ func (f File) Add(name string, w *multipart.Writer) (err error) {
 	}
 
 	fName := filepath.Base(f.Name)
-	contentType := mime.TypeByExtension(filepath.Ext(fName))
+
+	// If a Content Type is not provided, detect it
+	if contentType == "" {
+		contentType = mime.TypeByExtension(filepath.Ext(fName))
+	}
 
 	param := map[string]string{
 		"charset": f.Charset,
@@ -203,8 +207,8 @@ type TextPart struct {
 }
 
 // Add implements the Source interface.
-func (p TextPart) Add(name string, w *multipart.Writer) error {
-	quotedPart, err := CreateQuotedPart(w, name)
+func (p TextPart) Add(contentType string, w *multipart.Writer) error {
+	quotedPart, err := CreateQuotedPart(w, contentType)
 	if err != nil {
 		return err
 	}

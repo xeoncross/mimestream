@@ -2,17 +2,15 @@ package mimereader
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/textproto"
 	"os"
-	"regexp"
 	"strings"
-	"unicode"
 
 	"github.com/pkg/errors"
 )
@@ -46,45 +44,50 @@ func (p Part) Close() error {
 	return p.Closer.Close()
 }
 
-type TrimReader2 struct{ io.Reader }
-
-var trailingws = regexp.MustCompile(` +\r?\n`)
-
-func (tr TrimReader2) Read(bs []byte) (int, error) {
-	// Perform the requested read on the given reader.
-	n, err := tr.Reader.Read(bs)
-	if err != nil {
-		return n, err
-	}
-
-	// bytes.Replace(s, old, new, n)
-
-	// Remove trailing whitespace from each line.
-	lines := string(bs[:n])
-	trimmed := []byte(trailingws.ReplaceAllString(lines, ""))
-	copy(bs, trimmed)
-	return len(trimmed), nil
-}
+// type TrimReader2 struct{ io.Reader }
+//
+// var trailingws = regexp.MustCompile(` *\r?\n`)
+//
+// func (tr TrimReader2) Read(bs []byte) (int, error) {
+// 	// b := make([]byte, len(bs))
+//
+// 	// Perform the requested read on the given reader.
+// 	n, err := tr.Reader.Read(bs)
+// 	if err != nil {
+// 		return n, err
+// 	}
+//
+// 	// bs = bytes.TrimRight(b, "\r\n")
+// 	// return len(bs), nil
+//
+// 	// Remove trailing whitespace from each line.
+// 	lines := string(bs[:n])
+// 	trimmed := []byte(trailingws.ReplaceAllString(lines, ""))
+// 	copy(bs, trimmed)
+// 	return len(trimmed), nil
+// }
 
 // trimReader is a custom io.Reader that will trim any leading
 // whitespace, as this can cause email imports to fail.
-type trimReader struct {
-	rd io.Reader
-}
-
-// Read trims off any unicode whitespace from the originating reader
-func (tr trimReader) Read(buf []byte) (int, error) {
-	n, err := tr.rd.Read(buf)
-	t := bytes.TrimLeftFunc(buf[:n], unicode.IsSpace)
-	n = copy(buf, t)
-	return n, err
-}
+// type trimReader struct {
+// 	rd io.Reader
+// }
+//
+// // Read trims off any unicode whitespace from the originating reader
+// func (tr trimReader) Read(buf []byte) (int, error) {
+// 	n, err := tr.rd.Read(buf)
+// 	t := bytes.TrimLeftFunc(buf[:n], unicode.IsSpace)
+// 	n = copy(buf, t)
+// 	return n, err
+// }
 
 // NewEmailFromReader reads a stream of bytes from an io.Reader, r,
 // and returns an email struct containing the parsed data.
 // This function expects the data in RFC 5322 format.
 func NewEmailFromReader(r io.Reader, dir string) (mw MailWrapper, err error) {
-	s := trimReader{rd: r}
+	s := r
+	// s := trimReader{rd: r}
+	// s := TrimReader2{trimReader{rd: r}}
 	tp := textproto.NewReader(bufio.NewReader(s))
 
 	// io.CopyN(os.Stdout, s, int64(2000))
@@ -126,6 +129,9 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 		// Readers are buffered https://golang.org/src/mime/multipart/multipart.go#L99
 		mr := multipart.NewReader(b, params["boundary"])
 
+		// For checking if multipart.Reader{nl == [13 10] == '\r\n'}
+		// fmt.Printf("MR: %+v\n", mr)
+
 		var p *multipart.Part
 		for {
 
@@ -138,6 +144,9 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 				break
 			}
 
+			// For checking if multipart.Reader{nl == [13 10] == '\r\n'}
+			// fmt.Printf("MR: %+v\n", mr)
+
 			/////////////////////
 			// TODO
 			// There is an error in this section because we're not correctly padding
@@ -145,8 +154,8 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 			// https://golang.org/src/mime/multipart/multipart.go#L313
 			if err != nil && err.Error() == "multipart: NextPart: EOF" {
 				fmt.Printf("Type: %T\n", err)
-				err = nil
-				return
+				// err = nil
+				// return
 			}
 			/////////////////////
 
@@ -183,26 +192,26 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 				fmt.Println("\tparsing plain?", subct)
 
 				// v1: in-memory
-				parts = append(parts, &Part{Body: body, Header: p.Header, Closer: p})
+				// parts = append(parts, &Part{Body: body, Header: p.Header, Closer: p})
 
 				// v2: disk-cache
-				// var tmpFile *os.File
-				// tmpFile, err = ioutil.TempFile(dir, "mime")
-				// if err != nil {
-				// 	err = errors.Wrap(err, "Error creating email temp file")
-				// 	return
-				// }
-				//
-				// _, err = io.Copy(tmpFile, body) // Save body disk
-				// if err != nil {
-				// 	err = errors.Wrap(err, "Error saving to email temp file")
-				// 	return
-				// }
-				//
-				// // Rewind for reading
-				// tmpFile.Seek(0, 0)
-				//
-				// parts = append(parts, &Part{Body: tmpFile, Closer: tmpFile, File: tmpFile, Header: p.Header})
+				var tmpFile *os.File
+				tmpFile, err = ioutil.TempFile(dir, "mime")
+				if err != nil {
+					err = errors.Wrap(err, "Error creating email temp file")
+					return
+				}
+
+				_, err = io.Copy(tmpFile, body) // Save body disk
+				if err != nil {
+					err = errors.Wrap(err, "Error saving to email temp file")
+					return
+				}
+
+				// Rewind for reading
+				tmpFile.Seek(0, 0)
+
+				parts = append(parts, &Part{Body: tmpFile, Closer: tmpFile, File: tmpFile, Header: p.Header})
 
 			}
 		}

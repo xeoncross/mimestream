@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"os"
 	"runtime"
@@ -31,7 +32,7 @@ func Test(t *testing.T) {
 
 	parts := mimestream.Parts{
 		mimestream.Part{
-			Name: mimestream.TextPlain,
+			ContentType: mimestream.TextPlain,
 			Source: mimestream.TextPart{
 				Text: "Hello World",
 			},
@@ -53,7 +54,7 @@ func Test(t *testing.T) {
 		// 	},
 		// },
 		mimestream.Part{
-			Name: "application/json",
+			ContentType: "application/json",
 			Source: mimestream.File{
 				Name:   "payload.json",
 				Reader: strings.NewReader(`{"one":1,"two":2}`),
@@ -64,9 +65,14 @@ func Test(t *testing.T) {
 	// To pipe to reader
 	pr, pw := io.Pipe()
 
+	// Log everything read
+	sow := &StdoutWriter{}
+
 	// Log how much data passed through
 	wc := &WriteCounter{}
-	forkedwriter := io.MultiWriter(wc, pw)
+
+	// One write to rule-them-all
+	forkedwriter := io.MultiWriter(wc, pw, sow)
 
 	// Report
 	go func() {
@@ -136,7 +142,15 @@ func Test(t *testing.T) {
 	fmt.Println(message.Close())
 
 	for _, p := range message.Parts {
-		io.Copy(os.Stdout, p.Body)
+
+		b, err := ioutil.ReadAll(p.Body)
+		// _, err = io.Copy(os.Stdout, p.Body)
+		if err != nil {
+			log.Fatalf("ioutil.ReadAll: %s\n", err)
+		}
+
+		fmt.Printf("Part body: %q\n", b)
+
 		p.Close()
 		// os.Remove(p.File.Name())
 	}

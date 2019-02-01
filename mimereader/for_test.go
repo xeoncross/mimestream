@@ -1,6 +1,7 @@
 package mimereader
 
 import (
+	"fmt"
 	"io"
 	"sync/atomic"
 	"time"
@@ -53,4 +54,15 @@ func (wc *WriteCounter) Recent() (n int64) {
 	n = atomic.LoadInt64(&wc.recent)
 	atomic.StoreInt64(&wc.recent, int64(0))
 	return n
+}
+
+// Log everything written to Stdout
+type StdoutWriter struct {
+	n int
+}
+
+func (w *StdoutWriter) Write(p []byte) (int, error) {
+	w.n++
+	fmt.Printf("%d: %q\n", w.n, p)
+	return len(p), nil
 }
