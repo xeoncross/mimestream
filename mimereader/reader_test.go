@@ -45,7 +45,7 @@ func Test(t *testing.T) {
 		// 	},
 		// },
 		// mimestream.Part{
-		// 	Name: mimestream.TextPlain,
+		// 	ContentType: mimestream.TextPlain,
 		// 	Source: mimestream.File{
 		// 		Name:   "filename-2 שלום.txt",
 		// 		Inline: true,
