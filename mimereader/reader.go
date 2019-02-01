@@ -44,51 +44,11 @@ func (p Part) Close() error {
 	return p.Closer.Close()
 }
 
-// type TrimReader2 struct{ io.Reader }
-//
-// var trailingws = regexp.MustCompile(` *\r?\n`)
-//
-// func (tr TrimReader2) Read(bs []byte) (int, error) {
-// 	// b := make([]byte, len(bs))
-//
-// 	// Perform the requested read on the given reader.
-// 	n, err := tr.Reader.Read(bs)
-// 	if err != nil {
-// 		return n, err
-// 	}
-//
-// 	// bs = bytes.TrimRight(b, "\r\n")
-// 	// return len(bs), nil
-//
-// 	// Remove trailing whitespace from each line.
-// 	lines := string(bs[:n])
-// 	trimmed := []byte(trailingws.ReplaceAllString(lines, ""))
-// 	copy(bs, trimmed)
-// 	return len(trimmed), nil
-// }
-
-// trimReader is a custom io.Reader that will trim any leading
-// whitespace, as this can cause email imports to fail.
-// type trimReader struct {
-// 	rd io.Reader
-// }
-//
-// // Read trims off any unicode whitespace from the originating reader
-// func (tr trimReader) Read(buf []byte) (int, error) {
-// 	n, err := tr.rd.Read(buf)
-// 	t := bytes.TrimLeftFunc(buf[:n], unicode.IsSpace)
-// 	n = copy(buf, t)
-// 	return n, err
-// }
-
 // NewEmailFromReader reads a stream of bytes from an io.Reader, r,
 // and returns an email struct containing the parsed data.
 // This function expects the data in RFC 5322 format.
 func NewEmailFromReader(r io.Reader, dir string) (mw MailWrapper, err error) {
-	s := r
-	// s := trimReader{rd: r}
-	// s := TrimReader2{trimReader{rd: r}}
-	tp := textproto.NewReader(bufio.NewReader(s))
+	tp := textproto.NewReader(bufio.NewReader(r))
 
 	// io.CopyN(os.Stdout, s, int64(2000))
 
@@ -139,25 +99,9 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 			// Closes last part reader: https://golang.org/src/mime/multipart/multipart.go#L302
 			p, err = mr.NextPart()
 			if err == io.EOF {
-				fmt.Println("reached EOF")
 				err = nil
 				break
 			}
-
-			// For checking if multipart.Reader{nl == [13 10] == '\r\n'}
-			// fmt.Printf("MR: %+v\n", mr)
-
-			/////////////////////
-			// TODO
-			// There is an error in this section because we're not correctly padding
-			// the messages with newlines causing the check above to fail ^
-			// https://golang.org/src/mime/multipart/multipart.go#L313
-			if err != nil && err.Error() == "multipart: NextPart: EOF" {
-				fmt.Printf("Type: %T\n", err)
-				// err = nil
-				// return
-			}
-			/////////////////////
 
 			if err != nil {
 				err = errors.Wrap(err, "Error fetching next part")
@@ -222,20 +166,6 @@ func parseMIMEParts(hs textproto.MIMEHeader, b io.Reader, dir string) (parts []*
 
 	return parts, nil
 }
-
-// func headersToReader(headers map[string][]string) io.Reader {
-// 	var buffer bytes.Buffer // Go 1.10+ can use strings.Builder
-// 	for name, values := range headers {
-// 		for _, value := range values {
-// 			buffer.WriteString(fmt.Sprintf("%s: %s\n", name, value))
-// 		}
-// 	}
-// 	return &buffer
-// }
-
-// func headerToReader(header http.Header) io.Reader {
-// 	header.Write
-// }
 
 // contentDecoderReader
 func contentDecoderReader(headers textproto.MIMEHeader, bodyReader io.Reader) *bufio.Reader {
