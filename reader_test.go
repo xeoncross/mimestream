@@ -17,18 +17,25 @@ func TestReader(t *testing.T) {
 	var err error
 
 	parts := Parts{
-		Part{
-			ContentType: TextPlain,
-			Source: TextPart{
-				Text: "Hello World",
+		Mixed{
+			Parts: []Part{
+				Text{
+					Text: "This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.",
+				},
+				Text{
+					ContentType: TextHTML,
+					Text:        "<p>This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.</p>",
+				},
 			},
 		},
-		Part{
-			ContentType: "image/jpeg",
-			Source: File{
-				Name:   "filename.jpg",
-				Reader: mockDataSrc(32), // in bytes
-			},
+		// Text{
+		// 	// ContentType: TextPlain, // Optional
+		// 	Text: "Hello World",
+		// },
+		File{
+			// ContentType: "image/jpeg", // Optional
+			Name:   "filename.jpg",
+			Reader: mockDataSrc(32), // in bytes
 		},
 		// Part{
 		// 	ContentType: TextPlain,
@@ -39,12 +46,10 @@ func TestReader(t *testing.T) {
 		// 		Closer: tmpfile,
 		// 	},
 		// },
-		Part{
-			ContentType: "application/json",
-			Source: File{
-				Name:   "payload.json",
-				Reader: strings.NewReader(`{"one":1,"two":2}`),
-			},
+		File{
+			ContentType: "application/json", // Optional
+			Name:        "payload.json",
+			Reader:      strings.NewReader(`{"one":1,"two":2}`),
 		},
 	}
 
@@ -119,7 +124,9 @@ func TestReader(t *testing.T) {
 		t.Error(err)
 	}
 
-	if partCounter != 3 {
-		t.Error("Invalid number of parts found")
+	want := 4
+
+	if partCounter != want {
+		t.Errorf("Invalid number of parts found:\n\tGot:%d\n\tWant:%d\n", partCounter, want)
 	}
 }

@@ -23,34 +23,22 @@ func TestWriter(t *testing.T) {
 	}
 
 	parts := Parts{
-		Part{
-			ContentType: TextPlain,
-			Source: TextPart{
-				Text: "Hello World",
-			},
+		Text{
+			Text: "Hello World",
 		},
-		Part{
-			ContentType: "image/jpeg",
-			Source: File{
-				Name:   "filename.jpg",
-				Reader: mockDataSrc(1024 * 1024 * 1000), // in MB
-			},
+		File{
+			Name:   "filename.jpg",
+			Reader: mockDataSrc(1024 * 1024 * 10), // in MB
 		},
-		Part{
-			ContentType: TextPlain,
-			Source: File{
-				Name:   "filename-2 שלום.txt",
-				Inline: true,
-				Reader: tmpfile,
-				Closer: tmpfile,
-			},
+		File{
+			Name:   "filename-2 שלום.txt",
+			Inline: true,
+			Reader: tmpfile,
+			Closer: tmpfile,
 		},
-		Part{
-			ContentType: "application/json",
-			Source: File{
-				Name:   "payload.json",
-				Reader: strings.NewReader(`{"one":1,"two":2}`),
-			},
+		File{
+			Name:   "payload.json",
+			Reader: strings.NewReader(`{"one":1,"two":2}`),
 		},
 	}
 

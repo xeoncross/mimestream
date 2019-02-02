@@ -14,26 +14,48 @@ import (
 func main() {
 
 	parts := mimestream.Parts{
-		mimestream.MixedPart{
-			mimestream.Part{
-				Source: mimestream.TextPart{
+		mimestream.Mixed{
+			Parts: mimestream.Parts{
+				mimestream.Text{
 					Text: "This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.",
 				},
-			},
-			mimestream.Part{
-				ContentType: mimestream.TextHTML,
-				Source: mimestream.TextPart{
-					Text: "<p>This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.</p>",
+				mimestream.Text{
+					ContentType: mimestream.TextHTML,
+					Text:        "<p>This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.</p>",
 				},
 			},
 		},
-		mimestream.Part{
-			Source: mimestream.File{
-				Name:   "filename-2 שלום.txt",
-				Reader: strings.NewReader("Filename text content"),
-			},
+		mimestream.File{
+			Name:   "filename-2 שלום.txt",
+			Reader: strings.NewReader("Filename text content"),
 		},
 	}
+
+	// parts := mimestream.Parts{
+	// 	mimestream.Part{
+	// 		Source: &mimestream.MixedPart{
+	// 			Parts: []mimestream.Part{
+	// 				mimestream.Part{
+	// 					Source: mimestream.TextPart{
+	// 						Text: "This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.",
+	// 					},
+	// 				},
+	// 				mimestream.Part{
+	// 					ContentType: mimestream.TextHTML,
+	// 					Source: mimestream.TextPart{
+	// 						Text: "<p>This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.</p>",
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// 	mimestream.Part{
+	// 		Source: mimestream.File{
+	// 			Name:   "filename-2 שלום.txt",
+	// 			Reader: strings.NewReader("Filename text content"),
+	// 		},
+	// 	},
+	// }
 
 	// Throw away
 	// out := ioutil.Discard

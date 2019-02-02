@@ -1,36 +1,62 @@
 package mimestream
 
 import (
-	"unicode"
-
-	"golang.org/x/text/runes"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
-	"golang.org/x/text/width"
+	"io"
+	"mime/multipart"
+	"mime/quotedprintable"
+	"net/textproto"
 )
 
-// Based on https://github.com/jhillyerd/enmime/blob/master/internal/stringutil/unicode.go
+type Text struct {
+	ContentType string
+	Text        string
+}
 
-// ToASCII converts unicode to ASCII by stripping accents and converting some special characters
-// into their ASCII approximations.  Anything else will be replaced with an underscore.
-func ToASCII(s string) string {
+// Add implements the Source interface.
+func (p Text) Add(w *multipart.Writer) error {
 
-	// Replace runes higher than allowed by ASCII
-	underscore := runes.Map(func(r rune) rune {
-		// ASCII 126 (tilde)
-		if r > 0x7e {
-			return '_'
-		}
-		return r
-	})
+	contentType := p.ContentType
 
-	// convert full width characters
-	// https://godoc.org/golang.org/x/text/width#Transformer
-	// https://stackoverflow.com/a/37646059/99923
-	s = width.Narrow.String(s)
+	// Default to text plain
+	if contentType == "" {
+		contentType = TextPlain
+	}
 
-	// unicode.Mn: nonspacing marks
-	tr := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), underscore, norm.NFC)
-	r, _, _ := transform.String(tr, s)
-	return r
+	quotedPart, err := CreateQuotedPart(w, contentType)
+	if err != nil {
+		return err
+	}
+
+	var n int
+	n, err = quotedPart.Write([]byte(p.Text))
+	if err != nil {
+		return err
+	}
+
+	if n != len(p.Text) {
+		return ErrPartialWrite
+	}
+
+	// Need to close after writing
+	// https://golang.org/pkg/mime/quotedprintable/#Writer.Close
+	quotedPart.Close()
+
+	return err
+}
+
+// CreateQuotedPart creates a quoted-printable, wrapped, mime part
+func CreateQuotedPart(writer *multipart.Writer, contentType string) (w *quotedprintable.Writer, err error) {
+	header := textproto.MIMEHeader{
+		"Content-Type":              []string{contentType},
+		"Content-Transfer-Encoding": []string{"quoted-printable"},
+	}
+
+	var part io.Writer
+	part, err = writer.CreatePart(header)
+	if err != nil {
+		return
+	}
+
+	w = quotedprintable.NewWriter(part)
+	return
 }
