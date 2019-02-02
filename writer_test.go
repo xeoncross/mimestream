@@ -23,8 +23,16 @@ func TestWriter(t *testing.T) {
 	}
 
 	parts := Parts{
-		Text{
-			Text: "Hello World",
+		Alternative{
+			Parts: []Part{
+				Text{
+					Text: "This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.",
+				},
+				Text{
+					ContentType: TextHTML,
+					Text:        "<p>This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.</p>",
+				},
+			},
 		},
 		File{
 			Name:   "filename.jpg",

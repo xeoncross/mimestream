@@ -7,6 +7,7 @@ import (
 	"net/textproto"
 )
 
+// Text is a text/HTML/other content body part
 type Text struct {
 	ContentType string
 	Text        string

@@ -1,13 +1,21 @@
 package mimestream
 
 import (
+	"encoding/base64"
+	"io"
 	"unicode"
 
+	textwrapper "github.com/emersion/go-textwrapper"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/text/width"
 )
+
+// NewMimeBase64Writer base64 encodes content and wraps to 76 characters
+func NewMimeBase64Writer(w io.Writer) io.WriteCloser {
+	return base64.NewEncoder(base64.StdEncoding, textwrapper.NewRFC822(w))
+}
 
 // Based on https://github.com/jhillyerd/enmime/blob/master/internal/stringutil/unicode.go
 

@@ -17,7 +17,7 @@ func TestReader(t *testing.T) {
 	var err error
 
 	parts := Parts{
-		Mixed{
+		Alternative{
 			Parts: []Part{
 				Text{
 					Text: "This is the text that goes in the plain part. It will need to be wrapped to 76 characters and quoted.",
@@ -28,10 +28,6 @@ func TestReader(t *testing.T) {
 				},
 			},
 		},
-		// Text{
-		// 	// ContentType: TextPlain, // Optional
-		// 	Text: "Hello World",
-		// },
 		File{
 			// ContentType: "image/jpeg", // Optional
 			Name:   "filename.jpg",
