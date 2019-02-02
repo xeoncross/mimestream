@@ -103,13 +103,14 @@ func TestReader(t *testing.T) {
 	err = HandleEmailFromReader(mailreader, func(header textproto.MIMEHeader, body io.Reader) (err error) {
 		partCounter++
 
-		b, err := ioutil.ReadAll(body)
+		// var b []byte
+		_, err = ioutil.ReadAll(body)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Part Header: %v\n", header)
-		fmt.Printf("Part body: %q\n", b)
+		// fmt.Printf("Part Header: %v\n", header)
+		// fmt.Printf("Part body: %q\n", b)
 
 		return
 	})

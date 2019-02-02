@@ -7,8 +7,8 @@ Status: *Work In Progress*
 ## TODO
 
 - More Tests
-- Finish MIME header creation/defaults
-- Finish MIME reader
+- Support writing nested parts
+- Multipart mixed and alternative
 
 
 # Why
@@ -35,6 +35,6 @@ Similar libraries
 
 # Resources
 
-@emersion has many [Go packages for Email and related things](https://github.com/emersion?utf8=%E2%9C%93&tab=repositories&q=&type=&language=go).
-
-Collection of [Go projects that deal with email, SMTP, IMAP, and other related tasks](https://gist.github.com/Xeoncross/4ef91d6a47bc33b85d8250772a0622e1)
+- https://tools.ietf.org/html/rfc2046
+- @emersion has many [Go packages for Email and related things](https://github.com/emersion?utf8=%E2%9C%93&tab=repositories&q=&type=&language=go).
+- Collection of [Go projects that deal with email, SMTP, IMAP, and other related tasks](https://gist.github.com/Xeoncross/4ef91d6a47bc33b85d8250772a0622e1)

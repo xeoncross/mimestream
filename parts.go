@@ -1,6 +1,7 @@
 package mimestream
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"mime"
@@ -16,6 +17,9 @@ import (
 // (with help from https://github.com/philippfranke/multipart-related/)
 // TODO: ShiftJIS: https://gist.github.com/hyamamoto/db03c03fd624881d4b84
 
+// ErrPartialWrite happens when the full body can't be written
+var ErrPartialWrite = errors.New("Failed to write full body")
+
 // Content Types
 var (
 	// Unformatted Text
@@ -26,28 +30,26 @@ var (
 
 	// Markdown
 	TextMarkdown = "text/markdown; charset=utf-8"
+
+	// Don't need...?
+	MultipartMixed = "multipart/mixed"
 )
 
 // Parts is a collection of parts of a multipart message.
 type Parts []Part
 
-// Into creates a multipart message into the given target from the provided
-// parts.
-// func (p Parts) Into(target io.Writer) (formDataContentType string, err error) {
-// 	w := multipart.NewWriter(target)
-// 	for _, part := range p {
-// 		err = part.Source.Add(part.Name, w)
-// 		if err != nil {
-// 			err = errors.Wrap(err, fmt.Sprintf("failed to add %T part %v", part, part))
-// 			return
-// 		}
-// 	}
-// 	formDataContentType = w.FormDataContentType()
-// 	return formDataContentType, w.Close()
-// }
-
+// Into the given multipart.Writer
 func (p Parts) Into(w *multipart.Writer) (err error) {
 	for _, part := range p {
+
+		// if len(part.Parts) > 0 {
+		// 	buf := &bytes.Buffer{}
+		// 	w2 := multipart.NewWriter(buf)
+		// 	part.Parts.Into(w2)
+		//
+		// 	continue
+		// }
+
 		err = part.Source.Add(part.ContentType, w)
 		if err != nil {
 			err = errors.Wrap(err, fmt.Sprintf("failed to add %T part %v", part, part))
@@ -67,6 +69,57 @@ type Part struct {
 type Source interface {
 	// Name can be a field name or content type. It is the part Content-Type
 	Add(contentType string, w *multipart.Writer) error
+}
+
+type MixedPart struct {
+	ContentType string
+	Parts       Parts
+}
+
+func (p *MixedPart) Add(contentType string, w *multipart.Writer) (err error) {
+
+	if len(p.Parts) == 0 {
+		return
+	}
+
+	buf := &bytes.Buffer{}
+	w2 := multipart.NewWriter(buf)
+
+	for _, p := range p.Parts {
+
+		err = p.Source.Add(p.ContentType, w2)
+		if err != nil {
+			err = errors.Wrap(err, fmt.Sprintf("failed to add %T part %v", p, p))
+			return
+		}
+	}
+
+	err = w2.Close()
+	if err != nil {
+		return
+	}
+
+	header := textproto.MIMEHeader{
+		"Content-Type": []string{w2.FormDataContentType()},
+	}
+
+	var part io.Writer
+	part, err = w.CreatePart(header)
+	if err != nil {
+		return err
+	}
+
+	var n int64
+	n, err = io.Copy(part, buf)
+	if err != nil {
+		return
+	}
+
+	if n != int64(buf.Len()) {
+		return ErrPartialWrite
+	}
+
+	return
 }
 
 // File is a Source implementation for files read from an io.Reader.
@@ -139,6 +192,7 @@ func (f File) Add(contentType string, w *multipart.Writer) (err error) {
 	base64Encoder := NewMimeBase64Writer(part)
 
 	// Copy everything into the base64 encoder
+	// TODO we should be checking bytes written here to prevent partial sends
 	_, err = io.Copy(base64Encoder, f.Reader)
 	if err != nil {
 		return err
@@ -152,8 +206,6 @@ func (f File) Add(contentType string, w *multipart.Writer) (err error) {
 		return f.Closer.Close()
 	}
 
-	// Add the ending newlines
-	// _, err = part.Write([]byte("\r\n\r\n"))
 	return
 }
 
@@ -208,6 +260,12 @@ type TextPart struct {
 
 // Add implements the Source interface.
 func (p TextPart) Add(contentType string, w *multipart.Writer) error {
+
+	// Default to text plain
+	if contentType == "" {
+		contentType = TextPlain
+	}
+
 	quotedPart, err := CreateQuotedPart(w, contentType)
 	if err != nil {
 		return err
@@ -219,12 +277,9 @@ func (p TextPart) Add(contentType string, w *multipart.Writer) error {
 		return err
 	}
 
-	// TODO something...
 	if n != len(p.Text) {
-		fmt.Println("Didn't write enough!")
+		return ErrPartialWrite
 	}
-
-	// _, err = quotedPart.Write([]byte("\r\n\r\n"))
 
 	// Need to close after writing
 	// https://golang.org/pkg/mime/quotedprintable/#Writer.Close
