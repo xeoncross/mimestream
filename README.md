@@ -4,6 +4,70 @@ Performant, low-memory multipart/mime library for building and parsing email bod
 
 Status: *Work In Progress*
 
+## Writer Usage
+
+Simple create a struct containing the parts as needed. Attach an io.Reader
+and file contents (or a network connection) will be streamed without requiring
+everything to be loaded into memory.
+
+    // Assuming this is some type of io.Reader or io.ReadCloser
+    var openfilehandle io.ReadCloser
+
+    parts := mimestream.Parts{
+      mimestream.Alternative{
+        Parts: []mimestream.Part{
+          mimestream.Text{
+            Text: "This is the text that goes in the plain part.",
+          },
+          mimestream.Text{
+            ContentType: mimestream.TextHTML,
+            Text:        "<p>This is the text that goes in the plain part.</p>",
+          },
+        },
+      },
+      mimestream.File{
+        Name:   "filename.jpg",
+        Inline: true,
+        Reader: openfilehandle,
+        Closer: openfilehandle,
+      },
+      mimestream.File{
+        Name:   "payload.json",
+        Reader: strings.NewReader(`{"one":1,"two":2}`),
+      },
+    }
+
+    // Destination could be file or network connection, here we just throw it away
+    mr := multipart.NewWriter(ioutil.Discard)
+
+    err = parts.Into(mr)
+    if err != nil {
+      log.Fatal(err)
+    }
+
+## Reader Usage
+
+Reading emails is done with a simple callback that provides a place to stream
+each part to a destination. In the example below we simply read everything.
+
+    // Assume mailreader is a network connection or email file
+    var mailreader io.Reader
+
+    err = HandleEmailFromReader(mailreader, func(header textproto.MIMEHeader, body io.Reader) (err error) {
+      maxbytes := 1024 * 1024
+
+      var b []byte
+      b, err = ioutil.ReadAll(io.LimitReader(body, maxbytes))
+      if err != nil {
+        return
+      }
+
+      fmt.Printf("Part Header: %v\n", header)
+      fmt.Printf("Part body: %q\n", b)
+
+      return
+    })
+
 ## TODO
 
 - More Tests
