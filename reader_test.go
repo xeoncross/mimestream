@@ -105,7 +105,7 @@ func TestReader(t *testing.T) {
 		partCounter++
 
 		// var b []byte
-		_, err = ioutil.ReadAll(body)
+		_, err = ioutil.ReadAll(io.LimitReader(body, 1024))
 		if err != nil {
 			return err
 		}

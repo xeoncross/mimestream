@@ -65,7 +65,7 @@ func parseMIMEParts(hs textproto.MIMEHeader, body io.Reader, handler partHandler
 
 	// Either a leaf node, or not a multipart email
 	if !strings.HasPrefix(ct, "multipart/") {
-		handler(hs, contentDecoderReader(hs, body))
+		err = handler(hs, contentDecoderReader(hs, body))
 		return
 	}
 
@@ -114,7 +114,10 @@ func parseMIMEParts(hs textproto.MIMEHeader, body io.Reader, handler partHandler
 
 		} else {
 			// Leaf node
-			handler(p.Header, body)
+			err = handler(p.Header, body)
+			if err != nil {
+				return
+			}
 		}
 	}
 
